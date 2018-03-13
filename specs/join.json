@@ -1,0 +1,19 @@
+{
+  "pipeline": {
+    "name": "join"
+  },
+  "input": {
+    "atom": { 
+      "glob": "/*/",
+      "repo": "cross"
+    }
+  },
+  "transform": {
+    "cmd": ["python3", 
+            "/record-linkage/join.py",
+            "-i", 
+            "/pfs/cross"],
+    "image": "rl:v0.1"
+  }
+}
+

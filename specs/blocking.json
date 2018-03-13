@@ -1,0 +1,20 @@
+{
+  "pipeline": {
+    "name": "blocking"
+  },
+  "input": {
+    "atom": { 
+      "glob": "/",
+      "repo": "records"
+    }
+  },
+  "transform": {
+    "cmd": ["python3", 
+            "/record-linkage/blocking.py",
+            "-i",
+            "/pfs/records",
+            "-o",
+            "/pfs/out"],
+    "image": "rl:v0.1"
+  }
+}

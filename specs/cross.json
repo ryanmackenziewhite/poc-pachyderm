@@ -1,0 +1,32 @@
+{
+  "pipeline": {
+    "name": "cross"
+  },
+  "input":{ 
+    "cross": [
+      { 
+        "atom": {
+          "repo": "recordsA",
+          "glob": "/*/*"
+        }
+      },
+      { 
+        "atom": {
+          "repo": "recordsB",
+          "glob": "/*/*"
+        }
+      }
+    ]
+  },
+  "transform": {
+    "cmd": ["python3", 
+            "/record-linkage/cross.py",
+            "-a",
+            "/pfs/recordsA",
+            "-b",
+            "/pfs/recordsB"],
+    "image": "rl:v0.1"
+  }
+}
+   
+
