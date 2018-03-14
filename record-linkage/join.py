@@ -5,44 +5,70 @@ Combine two datasets on key
 Extract features
 '''
 import csv
-import os
 import sys
 import argparse
+import pypachy
 from Levenshtein import distance 
+from file_util import FileUtil
+
+
+def pfs_list():
+    client = pypachy.PfsClient()
+    print('Testing pypachy')
+    pypachlst = client.list_file(('cross', 'master'), '/')
+    print(pypachlst)
+
+
+def worker_list(path):
+    util = FileUtil(path)
+    util.walk()
+    util.show()
+
+
+def write(name, data):
+    print('Write merged data')
+    print(data)
+    name = '/pfs/out/' + name + '.csv'
+    with open(name, 'x') as f:
+        writer = csv.writer(f)
+        writer.writerow(data)
+
 
 def merge_data(data):
     '''
     Create single record
     '''
     result = data[0] + data[1][1:]
-    dist = distance(data[0][0],data[1][0])
+    dist = distance(data[0][0], data[1][0])
     print("Levenshtein distance: ", dist)
     result.append(dist)
-    print(result)
+    return result
   
+
 def get_data(path):
-    print("Collecting datums from ", path)
-    data=[]
-    for dirpath, dirs, files in os.walk(path):
-        print(dirpath, dirs, files)
-        for f in files:
-            path_to_file = os.path.join(dirpath,f)
-            print(path_to_file)
-            with open(path_to_file,'r') as input:
-                print('file open', path_to_file)
-                reader = csv.reader(input)
-                for row in reader:
-                     data.append(row)
-    if(len(data)>0):
-       merge_data(data)
+    util = FileUtil(path)
+    util.walk()
+    data = []
+    name = ''
+    for key in util.datums:
+        print(key, util.datums[key])
+        name = name + key
+        with open(util.datums[key], 'r') as datum:
+            reader = csv.reader(datum)
+            for row in reader:
+                data.append(row)
+    if(len(data) > 0):
+        result = merge_data(data)
+        write(name, result)
     else:
-       print('No datums collected')
+        print('No datums collected')
+
 
 if __name__ == '__main__':
     print("Executing blocking on cross")
     parser = argparse.ArgumentParser()
     parser.add_argument('-i', dest='inpath', 
-                        action='store', required=True, help='Input path'  )
+                        action='store', required=True, help='Input path')
     arguments = parser.parse_args(sys.argv[1:])    
     print(arguments.inpath)
     get_data(arguments.inpath)
