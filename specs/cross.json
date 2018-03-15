@@ -2,9 +2,6 @@
   "pipeline": {
     "name": "cross"
   },
-  "parallelism_spec":{
-    "constant":4
-  },
   "input":{ 
     "cross": [
       { 
@@ -28,7 +25,7 @@
             "/pfs/recordsA",
             "-b",
             "/pfs/recordsB"],
-    "image": "rl:v0.2"
+    "image": "poc-test:v0.1"
   }
 }
    
