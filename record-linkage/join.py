@@ -7,23 +7,8 @@ Extract features
 import csv
 import sys
 import argparse
-import pypachy
 from Levenshtein import distance 
 from file_util import FileUtil
-
-
-def pfs_list():
-    client = pypachy.PfsClient()
-    print('Testing pypachy')
-    pypachlst = client.list_file(('cross', 'master'), '/')
-    print(pypachlst)
-
-
-def worker_list(path):
-    util = FileUtil(path)
-    util.walk()
-    util.show()
-
 
 def write(name, data):
     print('Write merged data')

@@ -2,6 +2,9 @@
   "pipeline": {
     "name": "cross"
   },
+  "parallelism_spec":{
+    "constant":4
+  },
   "input":{ 
     "cross": [
       { 

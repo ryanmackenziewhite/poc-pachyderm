@@ -13,7 +13,7 @@
             "/record-linkage/join.py",
             "-i", 
             "/pfs/cross"],
-    "image": "rl:v0.2"
+    "image": "rl:v0.3"
   }
 }
 
