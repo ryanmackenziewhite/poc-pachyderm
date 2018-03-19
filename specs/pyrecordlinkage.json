@@ -1,0 +1,31 @@
+{
+    "pipeline":{ 
+        "name": "pyrecordlinkage"
+  },
+  "input":{ 
+    "cross": [
+      { 
+        "atom": {
+          "repo": "febrlA",
+          "glob": "/*"
+        }
+      },
+      { 
+        "atom": {
+          "repo": "febrlB",
+          "glob": "/*"
+        }
+      }
+    ]
+  },
+  "transform": {
+    "cmd": ["python3", 
+            "/record-linkage/pyrecordlinkage.py",
+            "-a",
+            "/pfs/febrlA",
+            "-b",
+            "/pfs/febrlB"],
+    "image": "poc-test:v0.2"
+  }
+}
+
