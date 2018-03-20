@@ -7,12 +7,15 @@
 # Distributed under terms of the  license.
 
 """
-Example record linkage using the Python Record Linkage Toolkit
+Use Pandas dataframe to perform blocking
+Extends the simple example to use 
+data with multiple observations per datum
+
+The following is already provided in the RecordLinkage
+package.
 """
 import argparse
 import sys
-import recordlinkage
-from recordlinkage.datasets import load_febrl4
 from file_util import FileUtil
 import pandas as pd
 import numpy as np
@@ -42,30 +45,63 @@ def load_data(path,dsetname=''):
                                             })
     return data
 
+def select(df, pairs, level, drop=False):
+    '''
+    Using MultiIndex, select the matched records 
+    and output new dataframe
+    See recordlinkage/utils.py frame_indexing
+    Select on label with 'loc'
+    or select on position with 'iloc'
+    Note that we drop duplicates, should be able to
+    filter out directly. In record linkage, the two dataframes
+    are created with all possible combinations (cross),
+    in order to compute the features on two columns
+    '''
+    print(type(pairs.get_level_values(level)))
+    data = df.loc[pairs.get_level_values(level)]
+    data = data.drop_duplicates()
+    return data
+
+def write(df,name):
+    df.to_csv(name)
+
+def blocking_pd(df_a, df_b):
+    '''
+    Record Linkage makes use of the pandas MultiIndex
+    Create a multiindex of original frames 
+    after merging on column with same values
+    see recordlinkage/index.py (Block)
+    '''
+    blocking_keys = 'given_name'
+    data_left = pd.DataFrame(df_a[blocking_keys])
+    data_left.columns = [blocking_keys]
+    data_left['index_x'] = np.arange(len(df_a))
+    data_left.dropna(axis=0, how='any', subset=[blocking_keys], inplace=True)
+    
+    data_right = pd.DataFrame(df_b[blocking_keys])
+    data_right.columns = [blocking_keys]
+    data_right['index_y'] = np.arange(len(df_b))
+    data_right.dropna(axis=0, how='any', subset=[blocking_keys], inplace=True)
+
+    pairs_df = data_left.merge(data_right, how='inner', on=[blocking_keys])
+
+    return pd.MultiIndex(
+            levels=[df_a.index.values, df_b.index.values],
+            labels=[pairs_df['index_x'].values, pairs_df['index_y'].values],
+            verify_integrity=False)
+
 def link(pathA,pathB,dsetnameA='',dsetnameB=''):
     dfA = load_data(pathA,dsetnameA)
     dfB = load_data(pathB,dsetnameB)
+    idx = blocking_pd(dfA, dfB)
+    print(len(idx))
+    df_blockA = select(dfA,idx,0,True)
+    df_blockB = select(dfB,idx,1,True)
+    print(len(dfA), len(df_blockA))
+    print(len(dfB), len(df_blockB))
 
-    # Indexation step
-    indexer = recordlinkage.BlockIndex(on='given_name')
-    pairs = indexer.index(dfA, dfB)
-
-    # Comparison step
-    compare_cl = recordlinkage.Compare()
-
-    compare_cl.exact('given_name', 'given_name', label='given_name')
-    compare_cl.string('surname', 'surname', method='jarowinkler', threshold=0.85, label='surname')
-    compare_cl.exact('date_of_birth', 'date_of_birth', label='date_of_birth')
-    compare_cl.exact('suburb', 'suburb', label='suburb')
-    compare_cl.exact('state', 'state', label='state')
-    compare_cl.string('address_1', 'address_1', threshold=0.85, label='address_1')
-
-    features = compare_cl.compute(pairs, dfA, dfB)
-
-    # Classification step
-    matches = features[features.sum(axis=1) > 3]
-    print(len(matches))
-
+    write(df_blockA,"subsetA.csv")
+    write(df_blockB,"subsetB.csv")
 
 
 if __name__ == '__main__':
@@ -83,7 +119,4 @@ if __name__ == '__main__':
     print(arguments.inpathA)
     link(arguments.inpathA, arguments.inpathB, 
             arguments.dsetnameA, arguments.dsetnameB)
-
-
-
 

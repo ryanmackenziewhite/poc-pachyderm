@@ -25,7 +25,7 @@
             "/pfs/recordsA",
             "-b",
             "/pfs/recordsB"],
-    "image": "poc-test:v0.1"
+    "image": "poc-test:v0.2"
   }
 }
    

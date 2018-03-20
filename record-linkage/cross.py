@@ -30,6 +30,16 @@ def blocking(data, idx):
     else:
         return False
 
+def blocking_zip(data, idx):
+    '''
+    Extend to handle multiple observations
+    '''
+    tuples = list(zip(*data))
+    if(tuples[idx][0] == tuples[idx][1]):
+        print('Blocking from zip', tuples)
+        return True
+    else:
+        return False
 
 def get_data(filepath, data):
     with open(filepath, 'r') as datum:
@@ -52,6 +62,7 @@ def process(repoA, repoB):
             fileB = utilB.datums[keyB]
             get_data(fileA, data)
             get_data(fileB, data)
+            blocking_zip(data, 0)
             if(blocking(data, 0) is True):
                 nameA = 'recordA' + '_' + str(i)
                 nameB = 'recordB' + '_' + str(j)

@@ -70,3 +70,8 @@ the Chapter 'Auxiliary Programs' in the Febrl manual.
    dataset4b.csv (containing the 5,000 duplicate records)
 
    These two data sets can be used for testing linkage procedures.
+
+   Current dataset4.csv contains both records mixed into single file.
+   For validation purposes, obtained dataset4a and dataset4b from
+   Python Record Linkage Toolkit until I can properly seperate
+   the records.
