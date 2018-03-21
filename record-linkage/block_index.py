@@ -19,31 +19,53 @@ import sys
 from file_util import FileUtil
 import pandas as pd
 import numpy as np
+from Levenshtein import distance 
 
-def load_data(path,dsetname=''):
+def load_data(path, dsetname=''):
     util = FileUtil(path)
     util.walk()
     for key in util.datums:
         print(key, util.datums[key])
-        if(len(dsetname)>0):
+        if(len(dsetname) > 0):
             fname = util.datums[key].split('/')[-1]
             print(fname)
             if(fname != dsetname):
                 continue
         print('Load ', key)
         data = pd.read_csv(util.datums[key],
-                                    index_col="rec_id",
-                                    sep=",",
-                                    engine='c',
-                                    skipinitialspace=True,
-                                    encoding='utf-8',
-                                    dtype={
-                                            "street_number": object,
-                                            "date_of_birth": object,
-                                            "soc_sec_id": object,
-                                            "postcode": object
-                                            })
+                           index_col="rec_id",
+                           sep=",",
+                           engine='c',
+                           skipinitialspace=True,
+                           encoding='utf-8',
+                           dtype={
+                                  "street_number": object,
+                                  "date_of_birth": object,
+                                  "soc_sec_id": object,
+                                  "postcode": object
+                                    }, nrows=10)
     return data
+
+def _compute(data1, data2):
+    conc = pd.Series(list(zip(data1, data2)))
+
+    def levensthein(x):
+        try:
+            return distance(x[0], x[1])
+        except:
+            return 999.
+    
+    return conc.apply(levensthein)
+
+def compute(df1, df2):
+    '''
+    compute features on columns
+    '''
+    data1 = df1['given_name']
+    data2 = df2['given_name']
+    result = _compute(data1, data2)
+    result.index = data1.index
+    return result
 
 def select(df, pairs, level, drop=False):
     '''
@@ -57,13 +79,14 @@ def select(df, pairs, level, drop=False):
     are created with all possible combinations (cross),
     in order to compute the features on two columns
     '''
-    print(type(pairs.get_level_values(level)))
     data = df.loc[pairs.get_level_values(level)]
-    data = data.drop_duplicates()
+    data.index = pairs
     return data
 
-def write(df,name):
+
+def write(df, name):
     df.to_csv(name)
+
 
 def blocking_pd(df_a, df_b):
     '''
@@ -72,7 +95,7 @@ def blocking_pd(df_a, df_b):
     after merging on column with same values
     see recordlinkage/index.py (Block)
     '''
-    blocking_keys = 'given_name'
+    blocking_keys = 'soc_sec_id'
     data_left = pd.DataFrame(df_a[blocking_keys])
     data_left.columns = [blocking_keys]
     data_left['index_x'] = np.arange(len(df_a))
@@ -90,18 +113,31 @@ def blocking_pd(df_a, df_b):
             labels=[pairs_df['index_x'].values, pairs_df['index_y'].values],
             verify_integrity=False)
 
-def link(pathA,pathB,dsetnameA='',dsetnameB=''):
-    dfA = load_data(pathA,dsetnameA)
-    dfB = load_data(pathB,dsetnameB)
+
+def link(pathA, pathB, dsetnameA='', dsetnameB=''):
+    dfA = load_data(pathA, dsetnameA)
+    dfB = load_data(pathB, dsetnameB)
     idx = blocking_pd(dfA, dfB)
     print(len(idx))
-    df_blockA = select(dfA,idx,0,True)
-    df_blockB = select(dfB,idx,1,True)
+    df_blockA = select(dfA, idx, 0, True)
+    df_blockB = select(dfB, idx, 1, True)
     print(len(dfA), len(df_blockA))
     print(len(dfB), len(df_blockB))
-
-    write(df_blockA,"subsetA.csv")
-    write(df_blockB,"subsetB.csv")
+    
+    dist = compute(df_blockA, df_blockB)
+    print(len(dist))
+    print(type(dist))
+    #df_blockA['distance'] = dist
+    #df_blockA = pd.concat([df_blockA, dist], axis=0)
+    
+    df_blockA = df_blockA.merge(dist.to_frame(), left_index=True, right_index=True)
+    df_blockA.columns.values[-1] = 'distance'
+    print(df_blockA)
+    print(df_blockA.index.values)
+    print(dist.index.values)
+    
+    write(df_blockA, "subsetA.csv")
+    write(df_blockB, "subsetB.csv")
 
 
 if __name__ == '__main__':
@@ -111,12 +147,12 @@ if __name__ == '__main__':
                         action='store', required=True, help='Input path')
     parser.add_argument('-b', dest='inpathB', 
                         action='store', required=True, help='Input path')
-    parser.add_argument('-na', dest='dsetnameA',required=False, 
+    parser.add_argument('-na', dest='dsetnameA', required=False, 
                         default='', help='Dataset')
-    parser.add_argument('-nb', dest='dsetnameB',required=False, 
+    parser.add_argument('-nb', dest='dsetnameB', required=False, 
                         default='', help='Dataset')
     arguments = parser.parse_args(sys.argv[1:])    
     print(arguments.inpathA)
     link(arguments.inpathA, arguments.inpathB, 
-            arguments.dsetnameA, arguments.dsetnameB)
+         arguments.dsetnameA, arguments.dsetnameB)
 
