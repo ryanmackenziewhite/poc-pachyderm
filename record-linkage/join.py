@@ -23,10 +23,10 @@ def merge_data(data):
     '''
     Create single record
     '''
-    result = data[0] + data[1][1:]
+    #result = data[0] + data[1][1:]
     dist = distance(data[0][0], data[1][0])
     print("Levenshtein distance: ", dist)
-    result.append(dist)
+    result = data[0] + data[1][0] + dist
     return result
   
 

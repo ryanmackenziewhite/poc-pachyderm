@@ -38,7 +38,7 @@ def split_file(filename, pattern, size):
                 n = 0
                 for line in chain([line], f):
                     out.write(line)
-                    n += len(file)
+                    n += len(f)
                     if n >= size:
                         break
 
@@ -49,26 +49,23 @@ class CSVSplitter(object):
     Consider use of multiprocessing to continue
     reading while writes occur 
     '''
-    def __init__(self, filename, pattern, size, has_header = True):
+    def __init__(self, filename, pattern, size, 
+                 has_header = True, write_header = True, repo = '', branch = ''):
         self.filename = filename
         self.pattern = pattern 
         self.size = size
         self.has_header = has_header
+        self.write_header = write_header
         self._header = None
         self._length = None
         self._client = pypachy.PfsClient()
         self._files = []
-
-    def chunker(self,reader):
-        i = 0
-        chunk = []
-        for i, line in enumerate(reader):
-            if(i % self.size == 0 and i >0):
-                yield chunk
-                del chunk[:]
-            chunk.append(line)
-        yield chunk   
+        self._repo = repo
+        self._branch = branch
     
+    def chunker(self, data):
+        return iter(lambda: data.read(self.size),b'')
+
     def get_schema(self,header):
         ncols = len(header)
         return ncols
@@ -76,31 +73,26 @@ class CSVSplitter(object):
     def split_file(self):
         self._length = 0
         index = 0
-        use_buffer = True
-        with open(self.filename, 'r') as data:
-            if(self.has_header is True):
-                reader = csv.reader(data)
-                self._header = next(reader)
-                for chunk in self.chunker(reader):
-                    index +=1
-                    self._files.append(self.pattern.format(index))
-                    if(use_buffer):
-                        output = io.StringIO()
-                        writer = csv.writer(output)
-                        writer.writerow(self._header)
-                        writer.writerows(chunk)
-                        with self._client.commit('test','master') as c:
-                            loc = '/'+self.pattern.format(index)
-                            #print(output.getvalue())
-                            print(loc)
-                            self._client.put_file_bytes(c,loc,output)
-                    else:
-                        with open(self.pattern.format(index), 'w') as out:
-                            writer = csv.writer(out)
-                            writer.writerow(self._header)
-                            writer.writerows(chunk)
-
-        print(self._client.get_files('test/master','/'))
+        print('Write header ', self.write_header) 
+        with open(self.filename, 'rb') as data: 
+            self._header = next(data)
+            for chunk in self.chunker(data):
+                index +=1
+                if(self.write_header is True):
+                    print('Write header')
+                    chunk = self._header + chunk
+                    print(index)
+                else: print(self.write_header)
+                self._files.append(self.pattern.format(index))
+                if(self._repo):
+                    print('Commit to pfs ', self._repo)
+                    with self._client.commit(self._repo,self._branch) as c:
+                        loc = '/'+self.pattern.format(index)
+                        print(loc)
+                        self._client.put_file_bytes(c,loc,chunk)
+                else:
+                    with open(self.pattern.format(index), 'wb') as out:
+                        out.write(chunk)    
 
 
 if __name__ == "__main__":
@@ -111,19 +103,24 @@ if __name__ == "__main__":
     parser.add_argument('-o', dest='output', action='store',
                         required=False, default='part', 
                         help='Optional output prefix')
-    parser.add_argument('-c', dest='chunk', required=False, default=1000,
+    parser.add_argument('-c', dest='chunk', required=False, default=40960,
                         help='Optional split size')
-    parser.add_argument('-r', dest='repo', help="Output repository")
-    parser.add_argument('-b', dest='branch', help="Branch")
+    parser.add_argument('-r', dest='repo', default = '', help="Output repository")
+    parser.add_argument('-b', dest='branch', default = '', help="Branch")
+    parser.add_argument('-wh', dest='write_header', default = True, type = bool, help='Write header')
     
     arguments = parser.parse_args(sys.argv[1:])
+    print(arguments)
     filepart = arguments.output + '_{0:0d}.csv'
-    splitter = CSVSplitter(arguments.input,filepart, arguments.chunk, True)
+    
+    splitter = CSVSplitter(arguments.input,
+                           filepart, 
+                           arguments.chunk, 
+                           True,
+                           arguments.write_header,
+                           arguments.repo,
+                           arguments.branch)
     splitter.split_file()
     print(splitter._length)
-    if(arguments.repo):
-        for f in splitter._files: 
-            cmd = "pachctl put-file {0} {1} -c -f {2}".format(arguments.repo,arguments.branch,f)
-            os.system(cmd)
 
 

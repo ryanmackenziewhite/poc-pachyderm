@@ -1,20 +1,30 @@
 {
-  "pipeline": {
-    "name": "blocking"
+  "pipeline":{ 
+    "name": "block_index"
   },
-  "input": {
-    "atom": { 
-      "glob": "/",
-      "repo": "records"
-    }
+  "input":{ 
+    "cross": [
+      { 
+        "atom": {
+          "repo": "febrlA",
+          "glob": "/*"
+        }
+      },
+      { 
+        "atom": {
+          "repo": "febrlB",
+          "glob": "/*"
+        }
+      }
+    ]
   },
   "transform": {
     "cmd": ["python3", 
-            "/record-linkage/blocking.py",
-            "-i",
-            "/pfs/records",
-            "-o",
-            "/pfs/out"],
-    "image": "rl:v0.1"
+            "/record-linkage/block_index.py",
+            "-a",
+            "/pfs/febrlA",
+            "-b",
+            "/pfs/febrlB"],
+    "image": "poc-test:v0.2"
   }
 }

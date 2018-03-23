@@ -85,7 +85,7 @@ def select(df, pairs, level, drop=False):
 
 
 def write(df, name):
-    df.to_csv(name)
+    df.to_csv(name, header = False)
 
 
 def blocking_pd(df_a, df_b):
