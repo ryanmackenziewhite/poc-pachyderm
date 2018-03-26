@@ -65,34 +65,31 @@ class CSVSplitter(object):
     
     def chunker(self, data):
         return iter(lambda: data.read(self.size),b'')
-
-    def get_schema(self,header):
-        ncols = len(header)
-        return ncols
     
     def split_file(self):
         self._length = 0
         index = 0
         print('Write header ', self.write_header) 
+        if(self._repo):    
+            print('Commit to pfs ', self._repo)
+            commit = self._client.start_commit(self._repo,self._branch)
         with open(self.filename, 'rb') as data: 
-            self._header = next(data)
+            if(self.had_header is True):
+                self._header = next(data)
             for chunk in self.chunker(data):
                 index +=1
                 if(self.write_header is True):
-                    print('Write header')
                     chunk = self._header + chunk
-                    print(index)
-                else: print(self.write_header)
                 self._files.append(self.pattern.format(index))
                 if(self._repo):
-                    print('Commit to pfs ', self._repo)
-                    with self._client.commit(self._repo,self._branch) as c:
-                        loc = '/'+self.pattern.format(index)
-                        print(loc)
-                        self._client.put_file_bytes(c,loc,chunk)
+                    loc = '/'+self.pattern.format(index)
+                    print('Commit file ', loc)
+                    self._client.put_file_bytes(commit,loc,chunk)
                 else:
                     with open(self.pattern.format(index), 'wb') as out:
                         out.write(chunk)    
+        if(self._repo):
+            self._client.finish_commit(commit)
 
 
 if __name__ == "__main__":
@@ -107,11 +104,13 @@ if __name__ == "__main__":
                         help='Optional split size')
     parser.add_argument('-r', dest='repo', default = '', help="Output repository")
     parser.add_argument('-b', dest='branch', default = '', help="Branch")
-    parser.add_argument('-wh', dest='write_header', default = True, type = bool, help='Write header')
+    parser.add_argument('-h', dest='hasheader', default = True, type = bool, help='Read header')
+    parser.add_argument('-w', dest='writeheader', default = True, type = bool, help='Write header')
     
     arguments = parser.parse_args(sys.argv[1:])
     print(arguments)
-    filepart = arguments.output + '_{0:0d}.csv'
+    inputfile = arguments.input.split('.')[0]
+    filepart = inputfile + '.' + arguments.output + '_{0:0d}.csv'
     
     splitter = CSVSplitter(arguments.input,
                            filepart, 
