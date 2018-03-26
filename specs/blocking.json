@@ -24,7 +24,9 @@
             "-a",
             "/pfs/febrlA",
             "-b",
-            "/pfs/febrlB"],
+            "/pfs/febrlB",
+            "-o",
+            "/pfs/out/"],
     "image": "poc-test:v0.2"
   }
 }

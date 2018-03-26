@@ -18,7 +18,7 @@ import argparse
 
 class PFSGenerator(object):
 
-    def __init__(self, pipeline, inpt, repo, glob, image, cmd):
+    def __init__(self, pipeline, inpt, repo, scnd='', glob='', image='', cmd=[], parl=('constant',1)):
         self._specs = OrderedDict()
         self._input = {"atom": self.input_atom,
                        "cross": self.input_cross,
@@ -27,18 +27,29 @@ class PFSGenerator(object):
         self._pipeline = pipeline
         self._glob = glob
         self._repo = repo
-        self._secondary = ''
+        self._secondary = scnd
         self._cmd = cmd
         self._image = image
+        self._parl = parl
         self.configure()
     
     def configure(self):
         self.pipeline(self._pipeline)
         self.input(self._inputkey)
         self.transform(self._cmd, self._image)
+        self.parallelism(self._parl[0],self._parl[1])
 
     def pipeline(self, pipeline):
         self._specs['pipeline'] = {'name': pipeline}
+
+    def parallelism(self, key='constant', value=1):
+        if(key == 'constant'):
+            value = int(value)
+        elif(key=='coefficient'):
+            value = float(value)
+
+
+        self._specs['parallelism_spec'] = {key: value}
 
     def input(self, key):
         self._specs['input'] = self._input[key]()
@@ -133,21 +144,40 @@ if __name__ == "__main__":
                         help='Docker Image')
     parser.add_argument('-c', '--cmd',
                         dest='command',
-                        nargs='+',
+                        type = str,
                         required=True,
                         action='store')
+    parser.add_argument('-j', '--json',
+                        dest='json',
+                        default='example.json',
+                        action='store',
+                        help='Json filename')
+    parser.add_argument('-l','--parallel',
+                        dest='parallel',
+                        nargs = '+',
+                        action='store',
+                        required='store',
+                        help='Parallelism spec')
 
     args = parser.parse_args(sys.argv[1:])
-    print(args) 
-    
+    print(args)
+    cmds = args.command.split()
+    print(cmds)
+    parallel = tuple(args.parallel)
+    print(parallel)
+    filename = args.pipeline + '.json'
+
     specs = PFSGenerator(args.pipeline,
                          args.input,
                          args.repo,
+                         args.second,
                          args.pattern,
                          args.docker,
-                         args.command)
+                         cmds,
+                         parallel)
     
     specs.display_from_json()
+    specs.save_to_json(filename)
 
 
 

@@ -43,7 +43,7 @@ def load_data(path, dsetname=''):
                                   "date_of_birth": object,
                                   "soc_sec_id": object,
                                   "postcode": object
-                                    }, nrows=10)
+                                    })
     return data
 
 def _compute(data1, data2):
@@ -114,7 +114,7 @@ def blocking_pd(df_a, df_b):
             verify_integrity=False)
 
 
-def link(pathA, pathB, dsetnameA='', dsetnameB=''):
+def link(pathA, pathB, dsetnameA='', dsetnameB='', outpath='./'):
     dfA = load_data(pathA, dsetnameA)
     dfB = load_data(pathB, dsetnameB)
     idx = blocking_pd(dfA, dfB)
@@ -136,8 +136,9 @@ def link(pathA, pathB, dsetnameA='', dsetnameB=''):
     print(df_blockA.index.values)
     print(dist.index.values)
     
-    write(df_blockA, "subsetA.csv")
-    write(df_blockB, "subsetB.csv")
+
+    write(df_blockA, outpath + 'subsetA.csv')
+    write(df_blockB, outpath + 'subsetB.csv')
 
 
 if __name__ == '__main__':
@@ -151,8 +152,9 @@ if __name__ == '__main__':
                         default='', help='Dataset')
     parser.add_argument('-nb', dest='dsetnameB', required=False, 
                         default='', help='Dataset')
+    parser.add_argument('-o', dest='output', default='./',required=False)
     arguments = parser.parse_args(sys.argv[1:])    
     print(arguments.inpathA)
     link(arguments.inpathA, arguments.inpathB, 
-         arguments.dsetnameA, arguments.dsetnameB)
+         arguments.dsetnameA, arguments.dsetnameB, arguments.output)
 
