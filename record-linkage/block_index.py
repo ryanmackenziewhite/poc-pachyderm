@@ -25,10 +25,8 @@ def load_data(path, dsetname=''):
     util = FileUtil(path)
     util.walk()
     for key in util.datums:
-        print(key, util.datums[key])
         if(len(dsetname) > 0):
             fname = util.datums[key].split('/')[-1]
-            print(fname)
             if(fname != dsetname):
                 continue
         print('Load ', key)
@@ -57,12 +55,13 @@ def _compute(data1, data2):
     
     return conc.apply(levensthein)
 
-def compute(df1, df2):
+def compute(df1, df2, distance_key):
     '''
     compute features on columns
     '''
-    data1 = df1['given_name']
-    data2 = df2['given_name']
+    print('Computing Levensthein distance on column ', distance_key)
+    data1 = df1[distance_key]
+    data2 = df2[distance_key]
     result = _compute(data1, data2)
     result.index = data1.index
     return result
@@ -87,8 +86,14 @@ def select(df, pairs, level, drop=False):
 def write(df, name):
     df.to_csv(name, header = False)
 
+def full_index(df_a, df_b):
+    '''
+    Creates a full cross product
+    '''
+    return pd.MultiIndex.from_product(
+            [df_a.index.values, df_b.index.values])
 
-def blocking_pd(df_a, df_b):
+def blocking_pd(df_a, df_b, validate = False):
     '''
     Record Linkage makes use of the pandas MultiIndex
     Create a multiindex of original frames 
@@ -96,17 +101,32 @@ def blocking_pd(df_a, df_b):
     see recordlinkage/index.py (Block)
     '''
     blocking_keys = 'soc_sec_id'
+
     data_left = pd.DataFrame(df_a[blocking_keys])
     data_left.columns = [blocking_keys]
     data_left['index_x'] = np.arange(len(df_a))
-    data_left.dropna(axis=0, how='any', subset=[blocking_keys], inplace=True)
     
     data_right = pd.DataFrame(df_b[blocking_keys])
     data_right.columns = [blocking_keys]
     data_right['index_y'] = np.arange(len(df_b))
-    data_right.dropna(axis=0, how='any', subset=[blocking_keys], inplace=True)
 
-    pairs_df = data_left.merge(data_right, how='inner', on=[blocking_keys])
+    if(validate is True):    
+        '''
+        uses the index as a blocking key, just for demonstration / validation
+        '''
+        print('Validation: apply blocking on record id')
+        data_left['id'] = np.arange(len(df_a))
+        data_left.dropna(axis=0, how='any', subset=['id'], inplace=True)
+        data_right['id'] = np.arange(len(df_a))
+        data_right.dropna(axis=0, how='any', subset=['id'], inplace=True)
+        pairs_df = data_left.merge(data_right, how='inner', on=['id'])
+    else:
+        data_left.dropna(axis=0, how='any', 
+                subset=[blocking_keys], inplace=True)
+        data_right.dropna(axis=0, how='any', 
+                subset=[blocking_keys], inplace=True)
+        pairs_df = data_left.merge(data_right, 
+                how='inner', on=[blocking_keys]) 
 
     return pd.MultiIndex(
             levels=[df_a.index.values, df_b.index.values],
@@ -114,28 +134,40 @@ def blocking_pd(df_a, df_b):
             verify_integrity=False)
 
 
-def link(pathA, pathB, dsetnameA='', dsetnameB='', outpath='./'):
+def link(pathA, pathB, dsetnameA='', dsetnameB='', 
+        outpath='./', validate=False, cross=False):
+    '''
+    Following method provides example 
+    linking of two datasets
+    '''
+
+    # Load the datasets dataframes
     dfA = load_data(pathA, dsetnameA)
     dfB = load_data(pathB, dsetnameB)
-    idx = blocking_pd(dfA, dfB)
-    print(len(idx))
+    
+    # Two options to produce a multi-index of two tables: 
+    # 1) full cartesian cross product of pairs
+    # 2) Inner join on a column
+
+    if(cross is True):
+        idx = full_index(dfA, dfB)
+    else:
+        idx = blocking_pd(dfA, dfB, validate)
+    
+    # Apply the selection of records from each table
     df_blockA = select(dfA, idx, 0, True)
     df_blockB = select(dfB, idx, 1, True)
-    print(len(dfA), len(df_blockA))
-    print(len(dfB), len(df_blockB))
     
-    dist = compute(df_blockA, df_blockB)
-    print(len(dist))
-    print(type(dist))
-    #df_blockA['distance'] = dist
-    #df_blockA = pd.concat([df_blockA, dist], axis=0)
+    # Compute Levenshtein distances for several columns
+    distance_keys = ['given_name','surname', 'address_1', 'address_2']
+    for key in distance_keys:
+        dist = compute(df_blockA, df_blockB, key)
+        df_blockA = df_blockA.merge(dist.to_frame(), left_index=True, right_index=True)
+        df_blockA.columns.values[-1] = key+'_dist'
     
-    df_blockA = df_blockA.merge(dist.to_frame(), left_index=True, right_index=True)
-    df_blockA.columns.values[-1] = 'distance'
-    print(df_blockA)
-    print(df_blockA.index.values)
-    print(dist.index.values)
-    
+    print('Original data set length ', len(dfA))
+    print('Linking data set length ', len(dfB))
+    print('Total linked pairs ', len(df_blockA))
 
     write(df_blockA, outpath + 'subsetA.csv')
     write(df_blockB, outpath + 'subsetB.csv')
@@ -153,8 +185,13 @@ if __name__ == '__main__':
     parser.add_argument('-nb', dest='dsetnameB', required=False, 
                         default='', help='Dataset')
     parser.add_argument('-o', dest='output', default='./',required=False)
+    parser.add_argument('-v', dest='validate', default=False, 
+                        type = bool, required=False)
+    parser.add_argument('-c', dest='cross', default=False, 
+                        type = bool, required=False, help='Full Index')
     arguments = parser.parse_args(sys.argv[1:])    
     print(arguments.inpathA)
     link(arguments.inpathA, arguments.inpathB, 
-         arguments.dsetnameA, arguments.dsetnameB, arguments.output)
+         arguments.dsetnameA, arguments.dsetnameB, 
+         arguments.output, arguments.validate, arguments.cross)
 

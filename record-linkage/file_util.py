@@ -13,6 +13,10 @@ Uses tempfile to create unique names -- needs to be better solution
 """
 import os
 import tempfile
+import logging
+
+logging.basicConfig(level=logging.INFO)
+log = logging.getLogger('FileUtil')
 
 class FileUtil(object):
 
@@ -67,26 +71,25 @@ class FileUtil(object):
         Do we assume unique file names?
         '''
         if name in self._files.keys():
-            print('Warning, file already exists')
+            log.error('Warning, file already exists')
         else:
             _path = os.path.normpath(os.path.abspath(path)) 
-            print(_path)
+            log.debug('%s',_path)
             self._files[name] = _path
 
     def walk(self):
-        print('FileUtil:walk') 
+        log.info('FileUtil:walk') 
         for root, dirs, files in os.walk(self.repo):
             for name in files:
                 path_to_file = os.path.join(root, name)
-                print(path_to_file)
+                log.debug('%s',path_to_file)
                 self._filenames.append(name)
                 self._filepaths.append(path_to_file)
                 self.update_files(name, path_to_file)
 
             for name in dirs:
                 path_to_dir = os.path.join(root, name)
-                print(path_to_dir)
-        print('----------------------------')
+                log.debug('%s',path_to_dir)
 
     def show(self):
         print("FileUtil:show")
