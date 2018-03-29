@@ -73,10 +73,6 @@ def select(df, pairs, level, drop=False):
     See recordlinkage/utils.py frame_indexing
     Select on label with 'loc'
     or select on position with 'iloc'
-    Note that we drop duplicates, should be able to
-    filter out directly. In record linkage, the two dataframes
-    are created with all possible combinations (cross),
-    in order to compute the features on two columns
     '''
     data = df.loc[pairs.get_level_values(level)]
     data.index = pairs
@@ -112,12 +108,13 @@ def blocking_pd(df_a, df_b, validate = False):
 
     if(validate is True):    
         '''
-        uses the index as a blocking key, just for demonstration / validation
+        uses the record id index as a blocking key
+        validate the distributed workload
         '''
         print('Validation: apply blocking on record id')
-        data_left['id'] = np.arange(len(df_a))
+        data_left['id'] = data_left.index.values 
         data_left.dropna(axis=0, how='any', subset=['id'], inplace=True)
-        data_right['id'] = np.arange(len(df_a))
+        data_right['id'] = data_right.index.values 
         data_right.dropna(axis=0, how='any', subset=['id'], inplace=True)
         pairs_df = data_left.merge(data_right, how='inner', on=['id'])
     else:

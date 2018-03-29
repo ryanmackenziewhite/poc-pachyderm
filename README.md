@@ -24,3 +24,7 @@ Now update the pps files in record-linkage/specs
 pachctl create-pipeline -f specs/cross.json
 pachctl create-pipeline -f specs/join.json
 ```
+
+Note, block_index.py has -v Validation option. We expect to get out what is put in.
+Currently on large datasets 1 million, this is not the case. Needs to be debugged.
+
