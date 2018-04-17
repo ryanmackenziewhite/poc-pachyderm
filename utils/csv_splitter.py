@@ -10,6 +10,7 @@
 Standalone csv splitter, integrated with pypachy
 Replacement for pachyderm put-file --split
 One example found on codereview.stackexchange.com question 33193
+
 """
 import argparse
 from itertools import chain
@@ -38,7 +39,7 @@ def split_file(filename, pattern, size):
                 n = 0
                 for line in chain([line], f):
                     out.write(line)
-                    n += len(f)
+                    n += len(line) 
                     if n >= size:
                         break
 
@@ -63,10 +64,15 @@ class CSVSplitter(object):
         self._repo = repo
         self._branch = branch
     
-    def chunker(self, data):
+    def chunker_broken(self, data):
+        '''
+        Following forces read of file with size
+        this breaks lines, so one needs to handle the 
+        split line ... not fixed here
+        '''
         return iter(lambda: data.read(self.size),b'')
     
-    def split_file(self):
+    def split_file_broken(self):
         self._length = 0
         index = 0
         print('Write header ', self.write_header) 
@@ -77,11 +83,52 @@ class CSVSplitter(object):
             if(self.has_header is True):
                 self._header = next(data)
                 print(self._header)
-            for chunk in self.chunker(data):
+            for chunk in self.chunker_broken(data):
                 index +=1
                 if(self.write_header is True):
                     chunk = self._header + chunk
                 self._files.append(self.pattern.format(index))
+                if(self._repo):
+                    loc = '/'+self.pattern.format(index)
+                    print('Commit file ', loc)
+                    self._client.put_file_bytes(commit,loc,chunk)
+                else:
+                    print(self.pattern.format(index))
+                    with open(self.pattern.format(index), 'wb') as out:
+                        out.write(chunk)    
+        if(self._repo):
+            self._client.finish_commit(commit)
+    
+    def split_file_line(self):
+        '''
+        Following must read line-by-line rather than chunks
+        functional, slow, cumbersome
+        but may be only choice in long run
+        apart from using a memory view to allocate a single memory
+        to place data ...
+        '''
+        self._length = 0
+        print('Write header ', self.write_header) 
+        if(self._repo):    
+            print('Commit to pfs ', self._repo)
+            commit = self._client.start_commit(self._repo,self._branch)
+        with open(self.filename, 'rb') as data: 
+            if(self.has_header is True):
+                self._header = next(data)
+                print(self._header)
+            for index, line in enumerate(data, start=1):
+                n = 0
+                chunk = b''
+               
+                self._files.append(self.pattern.format(index))
+                if(self.write_header is True):
+                    chunk = self._header + chunk
+                for line in chain([line], data):
+                    self._length += 1
+                    chunk = chunk + line 
+                    n += len(line)
+                    if n >= self.size:
+                        break
                 if(self._repo):
                     loc = '/'+self.pattern.format(index)
                     print('Commit file ', loc)
@@ -123,7 +170,9 @@ if __name__ == "__main__":
                            arguments.writeheader,
                            arguments.repo,
                            arguments.branch)
-    splitter.split_file()
+    #splitter.split_file_broken()
+    splitter.split_file_line()
+    #split_file(arguments.input,filepart,arguments.chunk)
     print(splitter._length)
     print(splitter._files)
 

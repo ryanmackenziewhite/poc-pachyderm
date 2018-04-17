@@ -154,7 +154,8 @@ def link(pathA, pathB, dsetnameA='', dsetnameB='',
     # Apply the selection of records from each table
     df_blockA = select(dfA, idx, 0, True)
     df_blockB = select(dfB, idx, 1, True)
-    
+
+    write(df_blockA, outpath + 'validation.csv')
     # Compute Levenshtein distances for several columns
     distance_keys = ['given_name','surname', 'address_1', 'address_2']
     for key in distance_keys:
@@ -168,6 +169,12 @@ def link(pathA, pathB, dsetnameA='', dsetnameB='',
 
     write(df_blockA, outpath + 'subsetA.csv')
     write(df_blockB, outpath + 'subsetB.csv')
+
+def validate(orig, new):
+    '''
+    Check input and output dataframes after join
+    '''
+    pass
 
 
 if __name__ == '__main__':
