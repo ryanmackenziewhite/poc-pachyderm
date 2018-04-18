@@ -155,7 +155,8 @@ def link(pathA, pathB, dsetnameA='', dsetnameB='',
     df_blockA = select(dfA, idx, 0, True)
     df_blockB = select(dfB, idx, 1, True)
 
-    write(df_blockA, outpath + 'validation.csv')
+    
+    write(df_blockA, outpath + 'output_valid.csv')
     # Compute Levenshtein distances for several columns
     distance_keys = ['given_name','surname', 'address_1', 'address_2']
     for key in distance_keys:
@@ -166,7 +167,7 @@ def link(pathA, pathB, dsetnameA='', dsetnameB='',
     print('Original data set length ', len(dfA))
     print('Linking data set length ', len(dfB))
     print('Total linked pairs ', len(df_blockA))
-
+    
     write(df_blockA, outpath + 'subsetA.csv')
     write(df_blockB, outpath + 'subsetB.csv')
 
