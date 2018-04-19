@@ -11,30 +11,11 @@ Validation script
 """
 import argparse
 import sys
+import os
 import csv
 from file_util import FileUtil
 import pandas as pd
 from pandas.util.testing import assert_frame_equal
-
-def load_processed(path, dsetname, meta):
-    util = FileUtil(path)
-    util.walk()
-    for key in util.datums:
-        if(len(dsetname) > 0):
-            fname = util.datums[key].split('/')[-1]
-            if(fname != dsetname):
-                continue
-        print('Load ', key)
-        data = pd.read_csv(util.datums[key],
-                           header=None)
-        data = data.drop(data.columns[1],axis=1)
-        data.columns = columns
-        for key in dtypes:
-            data[key] = data[key].astype(dtypes[key])
-
-        data = data.set_index('rec_id')
-                           
-    return data
 
 def get_index(arr):
     '''
@@ -54,10 +35,30 @@ def validate(dforg,dfvalid):
     equal = dforg.equals(dfvalid)
     print(equal)
     print(assert_frame_equal(dforg,dfvalid, check_dtype=False))
-    pass
+    return equal
+
+def validate_meta(path):
+    util = FileUtil(path)
+    util.walk()
+    meta=[]
+    for key in util.datums:
+        parts = key.split('.')
+        for part in parts:
+            if part != 'meta':
+                continue
+            with open(path + '/' + key, 'r') as f:
+                reader = csv.reader(f)
+                if(len(meta)==0): meta = next(reader)
+                for row in reader:
+                    if meta != row:
+                        print('Meta data does not match', meta, row)
+                        return []
+    return meta
+
+
+
 
 if __name__ == '__main__':
-    print("Python Record Linkage Toolkit")
     parser = argparse.ArgumentParser()
     parser.add_argument('-a', dest='inpathA', 
                         action='store', required=True, help='Input path')
@@ -68,15 +69,6 @@ if __name__ == '__main__':
     parser.add_argument('-nb', dest='dsetnameB', required=False, 
                         default='', help='Dataset')
     arguments = parser.parse_args(sys.argv[1:])    
-    print(arguments.inpathA)
-    utilA = FileUtil(arguments.inpathA)
-    utilA.walk()
-    for key in utilA.datums:
-        print(key)
-    utilB = FileUtil(arguments.inpathB)
-    utilB.walk()
-    for key in utilB.datums:
-        print(key)
 
     dset_input = arguments.inpathA + '/input_valid.csv'
     dset_output = arguments.inpathB + '/output_valid.csv'
@@ -86,10 +78,10 @@ if __name__ == '__main__':
                        header=None)
     df_out = df_out.drop(df_out.columns[1],axis=1)
     
-    meta = ['rec_id','given_name','surname','street_number',
-            'address_1','address_2','suburb',
-            'postcode','state','data_of_birth',
-            'age','phone_number','soc_sec_id','blocking_number']
+    meta = validate_meta(arguments.inpathA)
+    if(len(meta) != 0):
+        meta.insert(0,'rec_id')
+    print(meta)
     print(df_in.head(10))
     print(df_out.head(10))
     df_in.columns = meta
@@ -98,5 +90,12 @@ if __name__ == '__main__':
     df_out.set_index('rec_id')
     print(len(df_in))
     print(len(df_out))
-    validate(df_in,df_out)
+    if(len(df_in)==len(df_out)):
+        is_valid = validate(df_in,df_out)
+        if(is_valid):
+            os.symlink(arguments.inpathB + '/features.csv', 
+                       '/pfs/out/features.csv')
+
+
+
     

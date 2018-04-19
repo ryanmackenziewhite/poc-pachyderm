@@ -18,7 +18,7 @@ import pandas as pd
 import csv
 
 def write_meta(meta,name):
-    metaname = '/pfs/out/meta_'+name
+    metaname = '/pfs/out/'+name+'.meta.csv'
 
     with open(metaname, 'x') as f:
         writer = csv.writer(f)

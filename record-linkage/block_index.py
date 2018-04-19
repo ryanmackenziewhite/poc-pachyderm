@@ -16,6 +16,7 @@ package.
 """
 import argparse
 import sys
+import csv
 from file_util import FileUtil
 import pandas as pd
 import numpy as np
@@ -42,7 +43,7 @@ def load_data(path, dsetname=''):
                                   "soc_sec_id": object,
                                   "postcode": object
                                     })
-    return data
+    return data, key
 
 def _compute(data1, data2):
     conc = pd.Series(list(zip(data1, data2)))
@@ -81,6 +82,12 @@ def select(df, pairs, level, drop=False):
 
 def write(df, name):
     df.to_csv(name, header = False)
+
+def write_meta(meta,name):
+
+    with open(name, 'x') as f:
+        writer = csv.writer(f)
+        writer.writerow(meta)
 
 def full_index(df_a, df_b):
     '''
@@ -139,8 +146,8 @@ def link(pathA, pathB, dsetnameA='', dsetnameB='',
     '''
 
     # Load the datasets dataframes
-    dfA = load_data(pathA, dsetnameA)
-    dfB = load_data(pathB, dsetnameB)
+    dfA, filekeyA = load_data(pathA, dsetnameA)
+    dfB, filekeyB = load_data(pathB, dsetnameB)
     
     # Two options to produce a multi-index of two tables: 
     # 1) full cartesian cross product of pairs
@@ -168,8 +175,12 @@ def link(pathA, pathB, dsetnameA='', dsetnameB='',
     print('Linking data set length ', len(dfB))
     print('Total linked pairs ', len(df_blockA))
     
-    write(df_blockA, outpath + 'subsetA.csv')
-    write(df_blockB, outpath + 'subsetB.csv')
+    write(df_blockA, outpath + 'features.csv')
+    write_meta(list(dfA.columns.values), 
+            outpath + filekeyA + '.meta.csv')
+    write_meta(list(df_blockA.columns.values), 
+            outpath + filekeyA + '.features_meta.csv')
+
 
 def validate(orig, new):
     '''
