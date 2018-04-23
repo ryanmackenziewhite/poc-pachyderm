@@ -34,17 +34,17 @@ def load_data(path, dsetname=''):
                 continue
         print('Load ', key)
         data = pd.read_csv(util.datums[key],
-                           index_col="rec_id",
-                           sep=",",
-                           engine='c',
-                           skipinitialspace=True,
-                           encoding='utf-8',
-                           dtype={
-                                  "street_number": object,
-                                  "date_of_birth": object,
-                                  "soc_sec_id": object,
-                                  "postcode": object
-                                    })
+                           index_col="record_id")
+                           #sep=",",
+                           #engine='c',
+                           #skipinitialspace=True,
+                           #encoding='utf-8',
+                           #dtype={
+                           #       "street_number": object,
+                           #       "date_of_birth": object,
+                           #       "soc_sec_id": object,
+                           #       "postcode": object
+                           #         })
         write_meta(list(data.columns.values),key)
     return data
 

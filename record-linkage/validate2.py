@@ -80,14 +80,14 @@ if __name__ == '__main__':
     
     meta = validate_meta(arguments.inpathA)
     if(len(meta) != 0):
-        meta.insert(0,'rec_id')
+        meta.insert(0,'record_id')
     print(meta)
     print(df_in.head(10))
     print(df_out.head(10))
     df_in.columns = meta
     df_out.columns = meta
-    df_in.set_index('rec_id')
-    df_out.set_index('rec_id')
+    df_in.set_index('record_id')
+    df_out.set_index('record_id')
     print(len(df_in))
     print(len(df_out))
     if(len(df_in)==len(df_out)):
