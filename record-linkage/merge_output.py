@@ -13,9 +13,12 @@ for validation purposes
 
 import argparse
 import sys
+import os
 from file_util import FileUtil
 import pandas as pd
 import csv
+from shutil import copyfile
+import glob
 
 def write_meta(meta,name):
     metaname = '/pfs/out/'+name+'.meta.csv'
@@ -30,16 +33,19 @@ def load_data(path, dsetname=''):
     for key in util.datums:
         if(len(dsetname) > 0):
             fname = util.datums[key].split('/')[-1]
-            if(fname != dsetname):
-                continue
-        print('Load ', key)
-        data = pd.read_csv(util.datums[key],
-                           index_col="record_id")
-        write_meta(list(data.columns.values),key)
+            if(dsetname in fname):
+                print('Load ', key)
+                #data = pd.read_csv(util.datums[key],
+                #           header=None) 
+                #write_meta(list(data.columns.values),key)
+                
+                copyfile(util.datums[key],)
+            else:
+                print(dsetname, key)
     return data
 
 def write(df, name):
-    dsetname = name + '.csv'
+    dsetname = name + '.csv' 
     df.to_csv(dsetname, header = False)
 
 def merge(pathA, dsetnameA='', outpath='./'): 
@@ -50,9 +56,23 @@ def merge(pathA, dsetnameA='', outpath='./'):
     '''
 
     # Load the datasets dataframes
-    dfA = load_data(pathA, dsetnameA)
-    print("Records: ", len(dfA))
-    write(dfA, outpath + 'input_valid')   
+    util = FileUtil(pathA)
+    util.walk()
+    for key in util.datums:
+        if(len(dsetnameA) > 0):
+            fname = util.datums[key].split('/')[-1]
+            if(dsetnameA in fname):
+                print('Copy ', fname)
+                copyfile(util.datums[key], '/pfs/out/output_valid.csv')
+            if('.features.csv' in fname):
+                infile = util.datums[key]
+                outfile = '/pfs/out/'+fname
+                try:
+                    os.symlink(infile,outfile)
+                except:
+                    print('Cannot create sim-link',
+                            infile,
+                            outfile)
     
 
 if __name__ == '__main__':
@@ -67,3 +87,4 @@ if __name__ == '__main__':
     merge(arguments.inpathA, 
          arguments.dsetnameA, 
          arguments.output)
+

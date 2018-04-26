@@ -17,6 +17,8 @@ package.
 import argparse
 import sys
 import csv
+import os
+import errno
 from file_util import FileUtil
 import pandas as pd
 import numpy as np
@@ -175,7 +177,16 @@ def link(pathA, pathB,
     df_blockA = select(dfA, idx, 0)
     df_blockB = select(dfB, idx, 1)
     
-    write(df_blockA, outpath + 'output_valid.csv')
+    write_meta(list(dfA.columns.values), 
+               outpath + 
+               filekeyA + 
+               '.meta.csv')
+    if(len(df_blockA)>0): 
+        write(df_blockA, 
+            outpath + 
+            filekeyA + 
+            '.output.valid.csv')
+
     # Compute Levenshtein distances for several columns
     distance_keys = features
     if(distance_keys is None):
@@ -191,11 +202,20 @@ def link(pathA, pathB,
     print('Linking data set length ', len(dfB))
     print('Total linked pairs ', len(df_blockA))
     
-    write(df_blockA, outpath + 'features.csv')
-    write_meta(list(dfA.columns.values), 
-               outpath + filekeyA + '.meta.csv')
-    write_meta(list(df_blockA.columns.values), 
-               outpath + filekeyA + '.features_meta.csv')
+    if(len(df_blockA)>0 ):
+        write(df_blockA, 
+              outpath + 
+              filekeyA + 
+              '.' + 
+              filekeyB + 
+              '.features.csv')
+
+        write_meta(list(df_blockA.columns.values), 
+                    outpath + 
+                    filekeyA + 
+                    '.' + 
+                    filekeyB + 
+                    '.features_meta.csv')
 
 
 def validate(orig, new):
@@ -234,6 +254,7 @@ if __name__ == '__main__':
     print(arguments.inpathA)
     print('Blocking keys: ', arguments.keys)
     print('Feature keys: ', arguments.features)
+    
     link(arguments.inpathA, arguments.inpathB,
          arguments.keys, arguments.features,
          arguments.dsetnameA, arguments.dsetnameB, 

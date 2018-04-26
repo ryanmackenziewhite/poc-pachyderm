@@ -18,7 +18,7 @@ import argparse
 
 class PFSGenerator(object):
 
-    def __init__(self, pipeline, inpt, repo, scnd='', glob='', image='', cmd=[], parl=('constant',1)):
+    def __init__(self, pipeline, inpt, repo, scnd='', glob='', image='', cmd=[], stdin=[], parl=('constant',1)):
         self._specs = OrderedDict()
         self._input = {"atom": self.input_atom,
                        "cross": self.input_cross,
@@ -30,13 +30,14 @@ class PFSGenerator(object):
         self._secondary = scnd
         self._cmd = cmd
         self._image = image
+        self._stdin = stdin
         self._parl = parl
         self.configure()
     
     def configure(self):
         self.pipeline(self._pipeline)
         self.input(self._inputkey)
-        self.transform(self._cmd, self._image)
+        self.transform(self._cmd, self._image, self._stdin)
         self.parallelism(self._parl[0],self._parl[1])
 
     def pipeline(self, pipeline):
@@ -86,9 +87,15 @@ class PFSGenerator(object):
         
         return {"cross": [atom1, atom2]}
     
-    def transform(self, cmd, image):
-        self._specs['transform'] = {'cmd': self._cmd,
-                                    'image': self._image}
+    def transform(self, cmd, image, stdin=''):
+        if stdin:
+            self._specs['transform'] = {'cmd': self._cmd,
+                                        'image': self._image,
+                                        'stdin': self._stdin}
+                        
+        else:
+            self._specs['transform'] = {'cmd': self._cmd,
+                                        'image': self._image}
     
     def save_to_json(self, filename):
         print('Saving metadata model to json ', filename)
@@ -147,6 +154,11 @@ if __name__ == "__main__":
                         type = str,
                         required=True,
                         action='store')
+    parser.add_argument('-t', '--stdin',
+                        dest='stdin',
+                        type = str,
+                        required=False,
+                        action='store')
     parser.add_argument('-j', '--json',
                         dest='json',
                         default='example.json',
@@ -166,7 +178,8 @@ if __name__ == "__main__":
     parallel = tuple(args.parallel)
     print(parallel)
     filename = args.pipeline + '.json'
-
+    stdin=[]
+    stdin.append(args.stdin)
     specs = PFSGenerator(args.pipeline,
                          args.input,
                          args.repo,
@@ -174,6 +187,7 @@ if __name__ == "__main__":
                          args.pattern,
                          args.docker,
                          cmds,
+                         stdin,
                          parallel)
     
     specs.display_from_json()

@@ -31,7 +31,7 @@ def get_index(arr):
     print('Total length of indices', len(idx))
     return list(map(int,idx))
 
-def validate(dforg,dfvalid):
+def validate_df(dforg,dfvalid):
     equal = dforg.equals(dfvalid)
     print(equal)
     print(assert_frame_equal(dforg,dfvalid, check_dtype=False))
@@ -56,23 +56,45 @@ def validate_meta(path):
                         return []
     return meta
 
+def link_features(path):
+    # Load the datasets dataframes
+    util = FileUtil(path)
+    util.walk()
+    for key in util.datums:
+        fname = util.datums[key].split('/')[-1]
+        if('.features.csv' in fname):
+            infile = util.datums[key]
+            outfile = '/pfs/out/'+fname
+            try:
+                os.symlink(infile,outfile)
+            except:
+                print('Cannot create sim-link',
+                        infile,
+                        outfile)
 
 
+def validation(df_in, df_out):
+    is_valid = False
+    if(len(df_in)==len(df_out)):
+        is_valid = validate_df(df_in,df_out)
+        if(is_valid):
+            print("DF equal")
+        else:
+            print('Cannot validate tables')
+            print("------- Input dataset -------- ")
+            print(df_in.dtypes)
+            print(df_in.head(10))
+            print("------- Validation dataset -------- ")
+            print(df_out.dtypes)
+            print(df_out.head(10))
+    else:
+        print("Table sizes not equal")
+        print("Input dataset length ", len(df_in))
+        print("Output validation dataset length ", len(df_out))
+    
+    return is_valid    
 
-if __name__ == '__main__':
-    parser = argparse.ArgumentParser()
-    parser.add_argument('-a', dest='inpathA', 
-                        action='store', required=True, help='Input path')
-    parser.add_argument('-b', dest='inpathB', 
-                        action='store', required=True, help='Input path')
-    parser.add_argument('-na', dest='dsetnameA', required=False, 
-                        default='', help='Dataset')
-    parser.add_argument('-nb', dest='dsetnameB', required=False, 
-                        default='', help='Dataset')
-    arguments = parser.parse_args(sys.argv[1:])    
-
-    dset_input = arguments.inpathA + '/input_valid.csv'
-    dset_output = arguments.inpathB + '/output_valid.csv'
+def load_data(dset_input, dset_output):
     df_in = pd.read_csv(dset_input,
                        header=None,
                        dtype={0:str,
@@ -85,37 +107,63 @@ if __name__ == '__main__':
                            2:str})
     df_out = df_out.drop(df_out.columns[1],axis=1)
 
-    print(df_in.dtypes)
-    print(df_out.dtypes)
-    #df_in = df_in.drop(df_in.columns[0],axis=1)
-    #df_out = df_out.drop(df_out.columns[0],axis=1)
-    meta = validate_meta(arguments.inpathA)
-    if(len(meta) != 0):
-        meta.insert(0,'record_id')
-    print(meta)
-    print(df_in.head(10))
-    print(df_out.head(10))
+    return df_in, df_out
+
+def prepare_tables(df_in, df_out, meta):
     df_in.columns = meta
     df_out.columns = meta
-    df_in.set_index('record_id')
-    df_out.set_index('record_id')
+    
     idx_in = get_index(df_in['record_id'].tolist())
     idx_out = get_index(df_out['record_id'].tolist())
+    
     df_in['idx'] = idx_in
     df_out['idx'] = idx_out
     df_in = df_in.set_index('idx')
     df_out = df_out.set_index('idx')
+    
     df_in.sort_index(inplace=True)
     df_out.sort_index(inplace=True)
-    print(len(df_in))
-    print(len(df_out))
-    print(df_in.head(10))
-    print(df_out.head(10))
-    if(len(df_in)==len(df_out)):
-        is_valid = validate(df_in,df_out)
-        #if(is_valid):
-        #    os.symlink(arguments.inpathB + '/features.csv', 
-        #               '/pfs/out/features.csv')
+
+    return df_in, df_out
+
+def analysis(repo_in, repo_out):
+    dset_input = repo_in + '/input_valid.csv'
+    dset_output = repo_out + '/output_valid.csv'
+    print('Validation ', dset_input, dset_output) 
+    meta = validate_meta(arguments.inpathA)
+    if(len(meta) != 0):
+        meta.insert(0,'record_id')
+    print("----- Meta data validation -----")
+    print(meta)
+    
+    df_in, df_out = load_data(dset_input, dset_output)
+
+    df_in, df_out = prepare_tables(df_in, df_out, meta)
+    
+    is_valid = validation(df_in, df_out)
+    return is_valid
+
+if __name__ == '__main__':
+    print("Validation of identical dataset record linkage")
+    parser = argparse.ArgumentParser()
+    parser.add_argument('-a', dest='inpathA', 
+                        action='store', required=True, help='Input path')
+    parser.add_argument('-b', dest='inpathB', 
+                        action='store', required=True, help='Input path')
+    parser.add_argument('-na', dest='dsetnameA', required=False, 
+                        default='', help='Dataset')
+    parser.add_argument('-nb', dest='dsetnameB', required=False, 
+                        default='', help='Dataset')
+    arguments = parser.parse_args(sys.argv[1:])    
+
+    is_valid = analysis(arguments.inpathA, 
+                        arguments.inpathB)
+
+    print("Dataset validation ", is_valid)
+    if is_valid:
+        link_features(arguments.inpathB)
+                             
+
 
 
 
