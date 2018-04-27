@@ -23,8 +23,9 @@ STEP2=$DSETTAG$GEN2
 STEP3=$DSETTAG$FEATS
 STEP4=$STEP1$MERGE
 STEP5=$STEP2$MERGE
-STEP6=$STEP4$STEP5$VALID
+STEP6=$DSETTAG$VALID
 
+pachctl delete-pipeline ${STEP6}
 pachctl delete-pipeline ${STEP5}
 pachctl delete-pipeline ${STEP4}
 pachctl delete-pipeline ${STEP3}

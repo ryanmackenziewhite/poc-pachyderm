@@ -8,6 +8,18 @@
 
 MODEL=$1
 DSETTAG=$2
+CONT1=$3
+CONT2=$4
+EVENTS=$5
+NJOBS=$6
+
+if [[ $1 == 'help' || $1 == '-h' || $1 == '--help' ]]
+then
+    echo "Usage:"
+    echo "./autogen_pipeline.sh <model> <datatag> <adds container> <poc-pachyderm container> <nevents> <njobs>"
+    exit 1
+fi
+
 EVT1='_evt_set1_'
 EVT2='_evt_set2_'
 GEN1='_gen_set1_'
@@ -23,15 +35,15 @@ STEP2=$DSETTAG$GEN2
 STEP3=$DSETTAG$FEATS
 STEP4=$STEP1$MERGE
 STEP5=$STEP2$MERGE
-STEP6=$STEP4$STEP5$VALID
+STEP6=$DSETTAG$VALID
 
 echo "$STEP1 $STEP2 $STEP3 $STEP4 $STEP5 $STEP6"
 python run_fakerstc.py \
     -g True \
-    -m $1 \
-    -n 1000 \
+    -m $MODEL \
+    -n $EVENTS \
     -f True \
-    -j 10 \
+    -j $NJOBS \
     -r /pfs/out/$DSETTAG \
     -s 5236
 
@@ -53,7 +65,7 @@ python pfsgenerator.py \
     -i "atom" \
     -r "${INPUT1}" \
     -g "/*" \
-    -d "adds:v01" \
+    -d "${CONT1}" \
     -c "sh" \
     -l "constant" "4" \
     -t "sh /adds/scripts/autogen.sh /pfs/${INPUT1}" 
@@ -65,7 +77,7 @@ python pfsgenerator.py \
     -i "atom" \
     -r "${INPUT2}" \
     -g "/*" \
-    -d "adds:v01" \
+    -d "${CONT1}" \
     -c "sh" \
     -l "constant" "4" \
     -t "sh /adds/scripts/autogen.sh /pfs/${INPUT2}" 
@@ -78,7 +90,7 @@ python pfsgenerator.py \
     -r "${STEP1}" \
     -s "${STEP2}" \
     -g "/*" \
-    -d "poc-test:v02" \
+    -d "${CONT2}" \
     -c ""python3" "/record-linkage/block_index.py" "-a" "/pfs/${STEP1}" "-b" "/pfs/${STEP2}" "-o" "/pfs/out/" "-v" "True" "-k" "SIN"" \
     -l "constant" "4"
 
@@ -89,7 +101,7 @@ python pfsgenerator.py \
     -i "atom" \
     -r "${STEP3}" \
     -g "/*" \
-    -d "poc-test:v02" \
+    -d "${CONT2}" \
     -l "constant" "1" \
     -c ""python3" "/record-linkage/merge_output.py" "-a" "/pfs/${STEP3}" "-na" "output.valid.csv" "-o" "/pfs/out/"" 
 
@@ -100,7 +112,7 @@ python pfsgenerator.py \
     -i "atom" \
     -r "${STEP1}" \
     -g "/*" \
-    -d "poc-test:v02" \
+    -d "${CONT2}" \
     -c ""python3" "/record-linkage/merge_input.py" "-a" "/pfs/${STEP1}" "-o" "/pfs/out/"" \
     -l "constant" "1"
 pachctl create-pipeline -f ${STEP5}'.json'
@@ -110,9 +122,9 @@ python pfsgenerator.py \
     -i "cross" \
     -r "${STEP4}" \
     -s "${STEP5}" \
-    -g "/*" \
-    -d "poc-test:v02" \
-    -c ""python3" "/record-linkage/validate2.py" "-b" "/pfs/${STEP5}" "-a" "/pfs/${STEP4}"" \
+    -g "/" \
+    -d "$CONT2" \
+    -c ""python3" "/record-linkage/validate2.py" "-b" "/pfs/${STEP4}" "-a" "/pfs/${STEP5}"" \
     -l "constant" "1"
 
 pachctl create-pipeline -f ${STEP6}'.json'
